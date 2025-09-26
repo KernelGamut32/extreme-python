@@ -1,4 +1,4 @@
-name: extreme-python-lab
+name: base
 channels:
   - rapidsai
   - conda-forge
