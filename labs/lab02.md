@@ -37,13 +37,15 @@ import pandas as pd
 
 df = pd.read_csv(
     "SampleData.csv",
-    parse_dates=["Invoice_date"]
+    parse_dates=["Invoice_date"]  # ensures correct dtype on read
 )
+# change Account_no to string
+df["Account_no"] = df["Account_no"].astype('string')
 
 print(df.dtypes)
-df.head()
+display(df.head())
 df.info()
-df["Invoice_date"].min(), df["Invoice_date"].max()
+print("Min/Max Invoice_date:", df["Invoice_date"].min(), df["Invoice_date"].max())
 ```
 
 ---
