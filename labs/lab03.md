@@ -37,12 +37,19 @@ df = pd.read_csv(csv_path)
 df.head()
 df.shape, df.dtypes
 
-# Convert to datetime and add helpers
-df['Invoice_date'] = pd.to_datetime(df['Invoice_date'], infer_datetime_format=True)
+# Convert Invoice_date to datetime and add helpers
+df['Invoice_date'] = pd.to_datetime(df['Invoice_date'])
 df['Year']  = df['Invoice_date'].dt.year
 df['Month'] = df['Invoice_date'].dt.month
 
-df.describe(numeric_only=True)
+df.describe()
+
+df.shape, df.dtypes
+
+# Convert Account_no to string type
+df['Account_no'] = df['Account_no'].astype('string')
+df.describe(include=['int64', 'float64'])
+
 df[['Account_no','LocationID','ProductID']].nunique()
 ```
 
@@ -68,10 +75,16 @@ sorted_multi.head(10)
 
 ```python
 # Exact duplicate rows (all columns identical)
+first_row = df.iloc[[0]]
+new_row = pd.DataFrame({'Account_no': first_row['Account_no'],
+                         'CustomerID': 'P99',
+                         'ProductID': first_row['ProductID'],
+                         'Invoice_date': first_row['Invoice_date']})
+df = pd.concat([df, new_row], ignore_index=True)
 exact_dups_mask = df.duplicated(keep=False)
 df[exact_dups_mask].sort_values(df.columns.tolist()).head()
 
-# "Business-key" duplicates: same account + date + product
+# Business-key duplicates: same account + date + product
 key_cols = ['Account_no','Invoice_date','ProductID']
 key_dups_mask = df.duplicated(subset=key_cols, keep=False)
 df[key_dups_mask].sort_values(key_cols).head()
