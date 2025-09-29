@@ -21,12 +21,17 @@
 import pandas as pd
 import numpy as np
 
+# Load data (file is in the working directory)
 df = pd.read_csv("SampleData.csv")
 
-df["Invoice_date"] = pd.to_datetime(df["Invoice_date"], infer_datetime_format=True, errors="coerce")
+# Parse and enrich date features
+df["Invoice_date"] = pd.to_datetime(df["Invoice_date"], errors="coerce")
 df["Year"] = df["Invoice_date"].dt.year
 df["Month"] = df["Invoice_date"].dt.month
 df["YearMonth"] = df["Invoice_date"].dt.to_period("M").astype(str)
+
+# Convert Account_no to string type
+df["Account_no"] = df["Account_no"].astype('string')
 
 df.head()
 ```
@@ -40,7 +45,7 @@ df.head()
 ### A1) Price tiers via `map`
 
 ```python
-price_to_tier = {0.03: "Low", 0.05: "Medium", 0.07: "High"}  # adjust as needed
+price_to_tier = {0.025: "Low", 0.030: "Medium", 0.045: "High"}  # adjust if your file has different values
 df["PriceTier"] = df["Price"].map(price_to_tier).fillna("Other")
 df["PriceTier"].value_counts()
 ```
@@ -144,6 +149,7 @@ wide_kwh.head()
 ### B3) Back to tall with `melt` and validate round-trip
 
 ```python
+# 1) Melt back to tall
 tall_back = (
     wide_kwh
     .melt(id_vars=["Account_no", "YearMonth"], var_name="ProductID", value_name="Monthly_kwh")
@@ -151,13 +157,27 @@ tall_back = (
     .reset_index(drop=True)
 )
 
-check = (
-    tall[["Account_no", "YearMonth", "ProductID", "Monthly_kwh"]]
-    .sort_values(["Account_no", "YearMonth", "ProductID"])
+# 2) Align by keys and compare to original tall (treat missing combos as 0 in original)
+keys = ["Account_no", "YearMonth", "ProductID"]
+
+cmp = (
+    tall_back
+    .merge(
+        tall[keys + ["Monthly_kwh"]],
+        on=keys,
+        how="left",
+        suffixes=("_back", "")
+    )
+    .fillna({"Monthly_kwh": 0})
+    .sort_values(keys, kind="stable")
     .reset_index(drop=True)
 )
 
-(check["Monthly_kwh"].values == tall_back["Monthly_kwh"].values).all()
+# display(cmp)
+
+# 3) Validation result: True means round-trip preserved monthly usage
+import numpy as np
+np.allclose(cmp["Monthly_kwh_back"].to_numpy(), cmp["Monthly_kwh"].to_numpy())
 ```
 
 ### B4) Wide with multiple values (MultiIndex columns)
@@ -173,6 +193,7 @@ wide_multi = (
         fill_value=0
     )
 )
+# Flatten columns
 wide_multi.columns = [f"{val}_{pid}" for (val, pid) in wide_multi.columns]
 wide_multi = wide_multi.reset_index()
 wide_multi.head()
